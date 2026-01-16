@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Organizations (tenants)
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("standard") // starter, standard, premium
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profiles Profile[]
+  projects Project[]
+
+  @@map("organizations")
+}
+
+// User profiles (extends Clerk users)
+model Profile {
+  id             String   @id // Clerk user ID
+  organizationId String?
+  email          String   @unique
+  fullName       String?
+  avatarUrl      String?
+  role           String   @default("client") // admin, engineer, client
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization        Organization?  @relation(fields: [organizationId], references: [id])
+  clientProjects      Project[]      @relation("ClientProjects")
+  assignedProjects    Project[]      @relation("AssignedProjects")
+  approvedPhases      ProjectPhase[] @relation("ApprovedPhases")
+  assignedReviews     Review[]       @relation("AssignedReviews")
+  decidedReviews      Review[]       @relation("DecidedReviews")
+  aiTasks             AITask[]
+  messages            Message[]
+  activities          ActivityLog[]
+
+  @@map("profiles")
+}
+
+// MVP Projects
+model Project {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  clientId           String?
+  assignedEngineerId String?
+  name               String
+  slug               String
+  description        String?
+  tier               String   @default("standard") // starter, standard, premium
+  status             String   @default("discovery") // discovery, in_progress, review, staging, launched
+  currentPhase       Int      @default(1)
+  githubRepo         String?
+  stagingUrl         String?
+  productionUrl      String?
+  targetDate         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization     Organization   @relation(fields: [organizationId], references: [id])
+  client           Profile?       @relation("ClientProjects", fields: [clientId], references: [id])
+  assignedEngineer Profile?       @relation("AssignedProjects", fields: [assignedEngineerId], references: [id])
+  phases           ProjectPhase[]
+  reviews          Review[]
+  aiTasks          AITask[]
+  messages         Message[]
+  activities       ActivityLog[]
+
+  @@unique([organizationId, slug])
+  @@map("projects")
+}
+
+// Project phases (8 phases per project)
+model ProjectPhase {
+  id          String    @id @default(cuid())
+  projectId   String
+  phaseNumber Int
+  phaseName   String
+  status      String    @default("pending") // pending, in_progress, pending_review, approved
+  startedAt   DateTime?
+  completedAt DateTime?
+  approvedBy  String?
+  approvedAt  DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  approver Profile?  @relation("ApprovedPhases", fields: [approvedBy], references: [id])
+  reviews  Review[]
+  aiTasks  AITask[]
+
+  @@unique([projectId, phaseNumber])
+  @@map("project_phases")
+}
+
+// Reviews (approval checkpoints)
+model Review {
+  id          String    @id @default(cuid())
+  projectId   String
+  phaseId     String?
+  reviewType  String    // phase_checkpoint, code_review, client_signoff
+  title       String
+  description String?
+  assignedTo  String?
+  status      String    @default("pending") // pending, in_review, approved, rejected
+  priority    String    @default("normal") // critical, high, normal, low
+  decision    String?   // approved, revise, rejected
+  feedback    String?
+  decidedBy   String?
+  decidedAt   DateTime?
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase    ProjectPhase? @relation(fields: [phaseId], references: [id])
+  assignee Profile?      @relation("AssignedReviews", fields: [assignedTo], references: [id])
+  decider  Profile?      @relation("DecidedReviews", fields: [decidedBy], references: [id])
+
+  @@map("reviews")
+}
+
+// AI Tasks (AI loop tracking)
+model AITask {
+  id           String    @id @default(cuid())
+  projectId    String
+  phaseId      String?
+  taskType     String    // code_generation, test_generation, documentation, validation
+  title        String
+  prompt       String?
+  model        String    // opus, sonnet, haiku
+  status       String    @default("pending") // pending, processing, completed, failed
+  result       Json?
+  tokensInput  Int?
+  tokensOutput Int?
+  costUsd      Decimal?  @db.Decimal(10, 4)
+  durationMs   Int?
+  errorMessage String?
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase   ProjectPhase? @relation(fields: [phaseId], references: [id])
+  creator Profile?      @relation(fields: [createdBy], references: [id])
+
+  @@map("ai_tasks")
+}
+
+// Messages (communication thread)
+model Message {
+  id          String   @id @default(cuid())
+  projectId   String
+  authorId    String
+  content     String
+  messageType String   @default("message") // message, system, alert
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  Profile @relation(fields: [authorId], references: [id])
+
+  @@map("messages")
+}
+
+// Activity Log
+model ActivityLog {
+  id           String   @id @default(cuid())
+  projectId    String?
+  userId       String?
+  activityType String
+  description  String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    Profile? @relation(fields: [userId], references: [id])
+
+  @@map("activity_log")
+}
