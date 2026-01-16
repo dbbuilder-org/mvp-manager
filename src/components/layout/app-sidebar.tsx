@@ -10,7 +10,20 @@ import {
   Bot,
   Settings,
   Sparkles,
+  User,
 } from "lucide-react";
+
+// Check if Clerk is properly configured
+const hasValidClerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_");
+
+// Placeholder user button when Clerk is not configured
+function PlaceholderUserButton() {
+  return (
+    <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+      <User className="h-5 w-5 text-muted-foreground" />
+    </div>
+  );
+}
 import {
   Sidebar,
   SidebarContent,
@@ -115,13 +128,17 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="flex items-center gap-3 px-2 py-3">
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: "h-9 w-9",
-              },
-            }}
-          />
+          {hasValidClerkKey ? (
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "h-9 w-9",
+                },
+              }}
+            />
+          ) : (
+            <PlaceholderUserButton />
+          )}
           <div className="flex flex-col">
             <span className="text-sm font-medium text-sidebar-foreground">
               Account
