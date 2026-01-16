@@ -29,6 +29,6 @@ services:
 databases:
   - name: mvp-manager-db
     region: oregon
-    plan: free
+    plan: basic-256mb
     databaseName: mvp_manager
     user: mvp_manager_user
