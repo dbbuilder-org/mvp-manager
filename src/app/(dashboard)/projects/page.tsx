@@ -13,7 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Calendar, Users } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Calendar, Users, LayoutGrid, List } from "lucide-react";
 
 // Placeholder data - will be replaced with Prisma queries
 const projects = [
@@ -135,6 +144,64 @@ function getTierColor(tier: string) {
   }
 }
 
+function ProjectCard({ project }: { project: typeof projects[0] }) {
+  return (
+    <Link href={`/dashboard/projects/${project.id}`}>
+      <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-lg">{project.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {project.client}
+              </p>
+            </div>
+            <Badge variant="outline" className={getTierColor(project.tier)}>
+              {project.tier}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {project.description}
+          </p>
+
+          {/* Progress */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Phase {project.currentPhase}: {phaseNames[project.currentPhase - 1]}
+              </span>
+              <span className="font-medium">{project.progress}%</span>
+            </div>
+            <Progress value={project.progress} className="h-2" />
+          </div>
+
+          {/* Meta */}
+          <div className="flex items-center justify-between pt-2 border-t">
+            <Badge variant="outline" className={getStatusColor(project.status)}>
+              {project.status.replace("_", " ")}
+            </Badge>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {project.engineer.split(" ")[0]}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(project.targetDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 export default function ProjectsPage() {
   return (
     <div className="space-y-6">
@@ -191,64 +258,99 @@ export default function ProjectsPage() {
         </CardContent>
       </Card>
 
-      {/* Projects Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-            <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{project.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">
+      {/* View Toggle */}
+      <Tabs defaultValue="grid" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="grid" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Grid
+            </TabsTrigger>
+            <TabsTrigger value="table" className="gap-2">
+              <List className="h-4 w-4" />
+              Table
+            </TabsTrigger>
+          </TabsList>
+          <p className="text-sm text-muted-foreground">
+            {projects.length} projects
+          </p>
+        </div>
+
+        {/* Grid View */}
+        <TabsContent value="grid" className="mt-0">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Table View */}
+        <TabsContent value="table" className="mt-0">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Engineer</TableHead>
+                  <TableHead>Phase</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tier</TableHead>
+                  <TableHead>Target</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projects.map((project) => (
+                  <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <Link href={`/dashboard/projects/${project.id}`} className="font-medium hover:underline">
+                        {project.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {project.client}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className={getTierColor(project.tier)}>
-                    {project.tier}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {project.description}
-                </p>
-
-                {/* Progress */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Phase {project.currentPhase}: {phaseNames[project.currentPhase - 1]}
-                    </span>
-                    <span className="font-medium">{project.progress}%</span>
-                  </div>
-                  <Progress value={project.progress} className="h-2" />
-                </div>
-
-                {/* Meta */}
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <Badge variant="outline" className={getStatusColor(project.status)}>
-                    {project.status.replace("_", " ")}
-                  </Badge>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {project.engineer.split(" ")[0]}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {project.engineer}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {project.currentPhase}. {phaseNames[project.currentPhase - 1]}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={project.progress} className="h-2 w-16" />
+                        <span className="text-sm text-muted-foreground w-8">
+                          {project.progress}%
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getStatusColor(project.status)}>
+                        {project.status.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getTierColor(project.tier)}>
+                        {project.tier}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {new Date(project.targetDate).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                       })}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
